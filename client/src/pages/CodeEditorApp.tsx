@@ -4,6 +4,7 @@ import FileExplorer from "@/components/FileExplorer";
 import Editor from "@/components/Editor";
 import Sidebar from "@/components/Sidebar";
 import ShortcutHelp from "@/components/ShortcutHelp";
+import AIChatFab from "@/components/AIChatFab";
 import { useQuery } from "@tanstack/react-query";
 import { File } from "@shared/schema";
 
@@ -14,14 +15,15 @@ export default function CodeEditorApp() {
   const [activeTab, setActiveTab] = useState("terminal");
 
   // Fetch all files
-  const { data: files, isLoading } = useQuery({
+  const { data: files, isLoading } = useQuery<File[]>({
     queryKey: ["/api/files?projectId=1"],
+    initialData: [] // Initialize with empty array to avoid type errors
   });
 
   useEffect(() => {
     if (files && files.length > 0 && !activeFileId) {
       // Find index.js file and set it as active by default
-      const indexFile = files.find(file => file.name === "index.js" && !file.isFolder);
+      const indexFile = files.find((file: File) => file.name === "index.js" && !file.isFolder);
       if (indexFile) {
         handleFileOpen(indexFile);
       }
@@ -106,28 +108,36 @@ export default function CodeEditorApp() {
           
           <ResizableHandle withHandle />
           
-          {/* Editor Area */}
-          <ResizablePanel defaultSize={60}>
-            <Editor 
-              files={openFiles}
-              activeFileId={activeFileId} 
-              onFileSelect={setActiveFileId} 
-              onFileClose={handleFileClose}
-              onContentChange={handleFileContentChange}
-            />
-          </ResizablePanel>
-          
-          <ResizableHandle withHandle />
-          
-          {/* Terminal/AI Chat */}
-          <ResizablePanel defaultSize={20} minSize={15} maxSize={40}>
-            <Sidebar activeTab={activeTab} onTabChange={setActiveTab} userId={1} projectId={1} />
+          {/* Main Editor with Terminal at bottom */}
+          <ResizablePanel defaultSize={80}>
+            <ResizablePanelGroup direction="vertical">
+              {/* Editor Area */}
+              <ResizablePanel defaultSize={75} minSize={30}>
+                <Editor 
+                  files={openFiles}
+                  activeFileId={activeFileId} 
+                  onFileSelect={setActiveFileId} 
+                  onFileClose={handleFileClose}
+                  onContentChange={handleFileContentChange}
+                />
+              </ResizablePanel>
+              
+              <ResizableHandle withHandle />
+              
+              {/* Terminal Panel at Bottom */}
+              <ResizablePanel defaultSize={25} minSize={10} maxSize={50}>
+                <Sidebar activeTab={activeTab} onTabChange={setActiveTab} userId={1} projectId={1} />
+              </ResizablePanel>
+            </ResizablePanelGroup>
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
 
       {/* Shortcut help dialog */}
       {showShortcuts && <ShortcutHelp onClose={() => setShowShortcuts(false)} />}
+      
+      {/* AI Chat FAB */}
+      <AIChatFab userId={1} projectId={1} />
     </div>
   );
 }

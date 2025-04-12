@@ -88,8 +88,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use OpenAI for generating AI responses
       let response;
       try {
-        const OpenAI = require('openai');
-        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        // Import OpenAI using dynamic import for ES modules compatibility
+        const OpenAI = await import('openai');
+        const openai = new OpenAI.default({ apiKey: process.env.OPENAI_API_KEY });
         
         // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
         const completion = await openai.chat.completions.create({
@@ -114,7 +115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         response = `I apologize, but I couldn't process your request due to an API error. Please try again or check the API connection. Error details: ${errorMessage}`;
       }
       
-      const updatedChat = await storage.updateAiChatResponse(newChat.id, response);
+      const updatedChat = await storage.updateAiChatResponse(newChat.id, response || 'No response received');
       res.status(201).json(updatedChat);
     } catch (error) {
       if (error instanceof z.ZodError) {
