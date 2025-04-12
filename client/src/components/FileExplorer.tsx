@@ -55,11 +55,13 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ files, onFileOpen, activeFi
   
   // Helper to organize files into a tree structure
   const organizeFiles = () => {
+    console.log("Organizing files:", files);
     const root: Record<string, any> = {};
     
     // First pass: create folder structure
     files.forEach(file => {
       if (file.isFolder) {
+        console.log("Adding folder to tree:", file.path);
         root[file.path] = {
           ...file,
           children: {}
@@ -69,6 +71,7 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ files, onFileOpen, activeFi
     
     // Ensure "/" root exists
     if (!root['/']) {
+      console.log("Creating root folder as it doesn't exist");
       root['/'] = {
         id: 0,
         name: "my-project",
@@ -86,9 +89,13 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ files, onFileOpen, activeFi
         pathParts.pop(); // Remove filename
         const parentPath = pathParts.join('/') || '/';
         
+        console.log("Processing file:", file.name, "parent path:", parentPath);
+        
         if (root[parentPath]) {
+          console.log("Adding file to parent folder:", parentPath);
           root[parentPath].children[file.id] = file;
         } else {
+          console.log("Parent folder not found, adding to root");
           // If parent doesn't exist, add to root
           root['/'].children[file.id] = file;
         }
@@ -198,6 +205,12 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ files, onFileOpen, activeFi
         ? `/${newItemName}` 
         : `${currentPath}/${newItemName}`;
       
+      console.log("Creating new item:", {
+        type: isCreatingFile ? "file" : "folder",
+        name: newItemName,
+        path: newPath
+      });
+      
       const fileData = {
         name: newItemName,
         path: newPath,
@@ -207,16 +220,21 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ files, onFileOpen, activeFi
         projectId: 1 // Using a fixed project ID for simplicity
       };
       
+      console.log("Sending request with data:", fileData);
+      
       const response = await apiRequest("POST", "/api/files", fileData);
+      console.log("API response:", response);
       
       if (response.ok) {
         // Invalidate the files query to refetch
+        console.log("Invalidating file query");
         queryClient.invalidateQueries({ queryKey: ["/api/files?projectId=1"] });
         
         // Reset state
         setIsCreatingFile(false);
         setIsCreatingFolder(false);
         setNewItemName("");
+        console.log("File creation process completed");
       }
     } catch (error) {
       console.error("Error creating file/folder:", error);

@@ -19,6 +19,11 @@ export default function CodeEditorApp() {
     queryKey: ["/api/files?projectId=1"],
     initialData: [] // Initialize with empty array to avoid type errors
   });
+  
+  // Log files when they change
+  useEffect(() => {
+    console.log("Files from query:", files);
+  }, [files]);
 
   useEffect(() => {
     if (files && files.length > 0 && !activeFileId) {

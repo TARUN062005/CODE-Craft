@@ -37,10 +37,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/files", async (req, res) => {
     try {
+      console.log("POST /api/files - Request body:", req.body);
       const fileData = insertFileSchema.parse(req.body);
+      console.log("POST /api/files - Validated data:", fileData);
+      
       const newFile = await storage.createFile(fileData);
+      console.log("POST /api/files - Created file:", newFile);
+      
       res.status(201).json(newFile);
     } catch (error) {
+      console.error("POST /api/files - Error:", error);
+      
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Invalid file data", errors: error.errors });
       }
