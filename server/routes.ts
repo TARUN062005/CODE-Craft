@@ -88,9 +88,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use OpenAI for generating AI responses
       let response;
       try {
-        // Import OpenAI using dynamic import for ES modules compatibility
-        const OpenAI = await import('openai');
-        const openai = new OpenAI.default({ apiKey: process.env.OPENAI_API_KEY });
+        // Import OpenAI in a way compatible with ESM
+        const { default: OpenAI } = await import('openai');
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
         
         // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
         const completion = await openai.chat.completions.create({
