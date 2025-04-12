@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { File } from "@shared/schema";
 import { cn } from "@/lib/utils";
+import { apiRequest } from "@/lib/queryClient";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface FileExplorerProps {
   files: File[];
@@ -10,6 +12,12 @@ interface FileExplorerProps {
 
 const FileExplorer: React.FC<FileExplorerProps> = ({ files, onFileOpen, activeFileId }) => {
   const [collapsedFolders, setCollapsedFolders] = useState<Record<string, boolean>>({});
+  const [isCreatingFile, setIsCreatingFile] = useState(false);
+  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
+  const [newItemName, setNewItemName] = useState("");
+  const [currentPath, setCurrentPath] = useState("/");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
   
   // Toggle folder collapsed state
   const toggleFolder = (path: string) => {
@@ -154,6 +162,83 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ files, onFileOpen, activeFi
     );
   };
   
+  // Handle creating a new file
+  const handleCreateFile = async () => {
+    setIsCreatingFile(true);
+    setIsCreatingFolder(false);
+    setCurrentPath("/");
+    setNewItemName("");
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  // Handle creating a new folder
+  const handleCreateFolder = async () => {
+    setIsCreatingFolder(true);
+    setIsCreatingFile(false);
+    setCurrentPath("/");
+    setNewItemName("");
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+
+  // Handle canceling file/folder creation
+  const handleCancelCreate = () => {
+    setIsCreatingFile(false);
+    setIsCreatingFolder(false);
+    setNewItemName("");
+  };
+
+  // Handle submitting the file/folder creation
+  const handleSubmitCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!newItemName.trim()) return;
+    
+    try {
+      const newPath = currentPath === "/" 
+        ? `/${newItemName}` 
+        : `${currentPath}/${newItemName}`;
+      
+      const fileData = {
+        name: newItemName,
+        path: newPath,
+        content: isCreatingFile ? "" : null,
+        isFolder: isCreatingFolder,
+        parentId: null, // We'll handle this properly in a production app
+        projectId: 1 // Using a fixed project ID for simplicity
+      };
+      
+      const response = await apiRequest("POST", "/api/files", fileData);
+      
+      if (response.ok) {
+        // Invalidate the files query to refetch
+        queryClient.invalidateQueries({ queryKey: ["/api/files?projectId=1"] });
+        
+        // Reset state
+        setIsCreatingFile(false);
+        setIsCreatingFolder(false);
+        setNewItemName("");
+      }
+    } catch (error) {
+      console.error("Error creating file/folder:", error);
+    }
+  };
+
+  // Handle refreshing the file list
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ["/api/files?projectId=1"] });
+  };
+
+  // Handle collapsing all folders
+  const handleCollapseAll = () => {
+    const allPaths: Record<string, boolean> = {};
+    files.forEach(file => {
+      if (file.isFolder) {
+        allPaths[file.path] = true;
+      }
+    });
+    setCollapsedFolders(allPaths);
+  };
+
   const fileTree = organizeFiles();
   
   return (
@@ -161,20 +246,65 @@ const FileExplorer: React.FC<FileExplorerProps> = ({ files, onFileOpen, activeFi
       <div className="p-3 text-sm font-semibold flex items-center justify-between">
         <span>EXPLORER</span>
         <div className="flex space-x-1">
-          <button className="p-1 hover:bg-accent hover:text-accent-foreground rounded text-xs" title="New File">
+          <button 
+            className="p-1 hover:bg-accent hover:text-accent-foreground rounded text-xs" 
+            title="New File"
+            onClick={handleCreateFile}
+          >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="12" x2="12" y1="18" y2="12"/><line x1="9" x2="15" y1="15" y2="15"/></svg>
           </button>
-          <button className="p-1 hover:bg-accent hover:text-accent-foreground rounded text-xs" title="New Folder">
+          <button 
+            className="p-1 hover:bg-accent hover:text-accent-foreground rounded text-xs" 
+            title="New Folder"
+            onClick={handleCreateFolder}
+          >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><line x1="12" x2="12" y1="10" y2="16"/><line x1="9" x2="15" y1="13" y2="13"/></svg>
           </button>
-          <button className="p-1 hover:bg-accent hover:text-accent-foreground rounded text-xs" title="Refresh">
+          <button 
+            className="p-1 hover:bg-accent hover:text-accent-foreground rounded text-xs" 
+            title="Refresh"
+            onClick={handleRefresh}
+          >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>
           </button>
-          <button className="p-1 hover:bg-accent hover:text-accent-foreground rounded text-xs" title="Collapse All">
+          <button 
+            className="p-1 hover:bg-accent hover:text-accent-foreground rounded text-xs" 
+            title="Collapse All"
+            onClick={handleCollapseAll}
+          >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="8" x2="16" y1="12" y2="12"/></svg>
           </button>
         </div>
       </div>
+      
+      {/* Create file/folder form */}
+      {(isCreatingFile || isCreatingFolder) && (
+        <div className="px-4 py-2 border-t border-border">
+          <form onSubmit={handleSubmitCreate} className="flex items-center space-x-2">
+            <input
+              ref={inputRef}
+              type="text"
+              className="flex-1 text-xs px-2 py-1 border border-border rounded bg-background focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder={isCreatingFile ? "File name" : "Folder name"}
+              value={newItemName}
+              onChange={(e) => setNewItemName(e.target.value)}
+            />
+            <button
+              type="submit"
+              className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90"
+            >
+              Create
+            </button>
+            <button
+              type="button"
+              className="text-xs px-2 py-1 border border-border rounded hover:bg-accent hover:text-accent-foreground"
+              onClick={handleCancelCreate}
+            >
+              Cancel
+            </button>
+          </form>
+        </div>
+      )}
       
       <div className="flex-1 overflow-y-auto px-2 py-1 text-xs">
         {renderFileTree(fileTree['/'])}
