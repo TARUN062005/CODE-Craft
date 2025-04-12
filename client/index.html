@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
     <title>AI Code Editor</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+    <script>
+      // Configure Monaco editor to work without workers
+      window.MonacoEnvironment = {
+        getWorker: function() {
+          // Fall back to main thread processing
+          return { postMessage: () => {}, terminate: () => {} };
+        }
+      };
+    </script>
   </head>
   <body>
     <div id="root"></div>

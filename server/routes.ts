@@ -85,8 +85,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const chatData = insertAiChatSchema.parse(req.body);
       const newChat = await storage.createAiChat(chatData);
       
-      // Simulate AI response
-      const response = `I've analyzed your message: "${chatData.message}". This is a simulated AI response. To enable real AI completions, please configure an AI service API key.`;
+      // Use OpenAI for generating AI responses
+      let response;
+      try {
+        const OpenAI = require('openai');
+        const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+        
+        // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o",
+          messages: [
+            { 
+              role: "system", 
+              content: "You are an AI coding assistant integrated into a web-based code editor. Provide helpful, concise answers about programming concepts, debugging help, and coding best practices. When providing code examples, use markdown code blocks with appropriate language syntax highlighting."
+            },
+            { 
+              role: "user", 
+              content: chatData.message 
+            }
+          ],
+          max_tokens: 1000,
+        });
+        
+        response = completion.choices[0].message.content;
+      } catch (error) {
+        const aiError = error as Error;
+        console.error("OpenAI API error:", aiError);
+        response = `I apologize, but I couldn't process your request due to an API error. Please try again or check the API connection. Error details: ${aiError.message || 'Unknown error'}`;
+      }
       
       const updatedChat = await storage.updateAiChatResponse(newChat.id, response);
       res.status(201).json(updatedChat);
