@@ -5,7 +5,7 @@ import {
   aiChats, type AiChat, type InsertAiChat
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 
 export interface IStorage {
   // User methods
@@ -23,7 +23,7 @@ export interface IStorage {
   // File methods
   getFile(id: number): Promise<File | undefined>;
   getFilesByProjectId(projectId: number): Promise<File[]>;
-  getFilesByParentId(parentId: number): Promise<File[]>;
+  getFilesByParentId(parentId: number | null): Promise<File[]>;
   createFile(file: InsertFile): Promise<File>;
   updateFile(id: number, file: Partial<File>): Promise<File | undefined>;
   deleteFile(id: number): Promise<boolean>;
@@ -94,7 +94,7 @@ export class DatabaseStorage implements IStorage {
 
   async getFilesByParentId(parentId: number | null): Promise<File[]> {
     if (parentId === null) {
-      return await db.select().from(files).where(eq(files.parentId, null));
+      return await db.select().from(files).where(sql`${files.parentId} IS NULL`);
     }
     return await db.select().from(files).where(eq(files.parentId, parentId));
   }
@@ -114,8 +114,8 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteFile(id: number): Promise<boolean> {
-    const result = await db.delete(files).where(eq(files.id, id));
-    return result.count > 0;
+    await db.delete(files).where(eq(files.id, id));
+    return true;
   }
 
   // AI Chat methods
