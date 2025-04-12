@@ -108,10 +108,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         
         response = completion.choices[0].message.content;
-      } catch (error) {
-        const aiError = error as Error;
-        console.error("OpenAI API error:", aiError);
-        response = `I apologize, but I couldn't process your request due to an API error. Please try again or check the API connection. Error details: ${aiError.message || 'Unknown error'}`;
+      } catch (error: any) {
+        console.error("OpenAI API error:", error);
+        const errorMessage = error?.message || 'Unknown error';
+        response = `I apologize, but I couldn't process your request due to an API error. Please try again or check the API connection. Error details: ${errorMessage}`;
       }
       
       const updatedChat = await storage.updateAiChatResponse(newChat.id, response);
